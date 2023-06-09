@@ -100,7 +100,7 @@ jupyter nbconvert --to markdown file_name --output README.md
 Download:
 
 ```bash
-!wget https://raw.githubusercontent.com/dev-SR/Deep-Learning/main/tf_helper_functions.py
+!wget https://raw.githubusercontent.com/CodeCrafters6/deep-learning-tensorflow/main/tf_helper_functions.py
 ```
 
 Import:
