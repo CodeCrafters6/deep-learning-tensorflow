@@ -251,8 +251,15 @@ def smooth_curve(points, factor=0.8):
             smoothed_points.append(point)
     return np.array(smoothed_points)
 
-def plot_loss_curves_mplt(history, smoothing_factor=0.8):
-    """Plots training curves of a results dictionary with smoothed curves.
+def plot_loss_curves_mplt(history, 
+                          smoothing_factor=0.8, 
+                          fill_a=0,
+                          with_best_point=False,
+                          plt_style="seaborn-v0_8-whitegrid",
+                          start_epoch=1, 
+                          figsize = (20, 8)
+                          ):
+    """Plots training curves of a results dictionary with smoothed curves and saves them as PDF.
 
     Args:
         history (dict): Dictionary containing training history, e.g.
@@ -261,34 +268,155 @@ def plot_loss_curves_mplt(history, smoothing_factor=0.8):
              "accuracy": [...],
              "val_accuracy": [...]}.
         smoothing_factor (float): Smoothing factor for curves (default: 0.7).
+        start_epoch (int): Starting epoch number (default: 1).
+        fill_a (float): Alpha value for filling the area between curves (default: 0).
+        with_best_point (bool): Whether to include the best epoch point on the plot (default: False).
+        plt_style (str): Matplotlib style to use for the plot (default: "seaborn-v0_8-whitegrid").
+        figsize (tuple): Figure size (width, height) in inches (default: (10, 6)).
     """
     loss = history.history["loss"]
-    test_loss = history.history["val_loss"]
+    loss = smooth_curve(loss, smoothing_factor)
+    val_loss = history.history["val_loss"]
+    val_loss = smooth_curve(val_loss, smoothing_factor)
 
     accuracy = history.history["accuracy"]
-    test_accuracy = history.history["val_accuracy"]
+    accuracy = smooth_curve(accuracy, smoothing_factor)
+    val_accuracy = history.history["val_accuracy"]
+    val_accuracy = smooth_curve(val_accuracy, smoothing_factor)
 
-    epochs = range(len(history.history["loss"]))
+    epochs = range(start_epoch, len(history.history["loss"])+1)
 
-    plt.figure(figsize=(15, 7))
+    index_loss = np.argmin(val_loss)  # This is the epoch with the lowest validation loss
+    val_lowest = val_loss[index_loss]
+    index_acc = np.argmax(val_accuracy)
+    acc_highest = val_accuracy[index_acc]
+
+    sc_label = 'Best epoch = ' + str(index_loss + start_epoch)
+    vc_label = 'Best epoch = ' + str(index_acc + start_epoch)
+
+    plt.figure(figsize=figsize, facecolor='white')
+    plt.style.use(plt_style)
 
     # Plot loss
     plt.subplot(1, 2, 1)
-    plt.plot(epochs, smooth_curve(loss, smoothing_factor), label="train_loss")
-    plt.plot(epochs, smooth_curve(test_loss, smoothing_factor), label="test_loss")
-    plt.title("Loss")
-    plt.xlabel("Epochs")
-    plt.legend()
+    ax1 = plt.gca()  # Get the current axis
+    ax1.plot(epochs, loss, '#0570b9', label='Training loss', linewidth=4)
+    ax1.plot(epochs, val_loss,  "#ff8000", label='Validation loss', linewidth=4)
+    if fill_a:
+        ax1.fill_between(epochs, val_loss, loss, color='gray', alpha=fill_a)
+    ax1.set_title("Training and Validation Loss", fontsize=20)
+    ax1.set_xlabel("Epochs", fontsize=20)
+    ax1.set_ylabel("Loss", fontsize=20)
+    ax1.set_xlim([0.5, len(epochs)]) 
+    # Plot best point
+    if with_best_point:
+        ax1.scatter(index_loss + start_epoch, val_lowest, s=150, c='blue', label=sc_label)
+    ax1.legend(fontsize=18, loc='upper right', frameon=False)
 
     # Plot accuracy
     plt.subplot(1, 2, 2)
-    plt.plot(epochs, smooth_curve(accuracy, smoothing_factor), label="train_accuracy")
-    plt.plot(epochs, smooth_curve(test_accuracy, smoothing_factor), label="test_accuracy")
-    plt.title("Accuracy")
-    plt.xlabel("Epochs")
-    plt.legend()
+    ax2 = plt.gca()  # Get the current axis
+    ax2.plot(epochs, accuracy, '#0570b9',  label='Training Accuracy', linewidth=4)
+    ax2.plot(epochs, val_accuracy,"#ff8000", label='Validation Accuracy', linewidth=4)
+    if fill_a:
+        ax2.fill_between(epochs, val_accuracy, accuracy, color='gray', alpha=fill_a)
+    ax2.set_title("Training and Validation Accuracy", fontsize=20)
+    ax2.set_xlabel("Epochs", fontsize=20)
+    ax2.set_ylabel("Accuracy", fontsize=20)
+    ax2.set_xlim([0.5, len(epochs)])
+    ax2.set_ylim([0, 1.1])
+    # Plot best point
+    if with_best_point:
+        ax2.scatter(index_acc + start_epoch, acc_highest, s=150, c='blue', label=vc_label)
+    ax2.legend(fontsize=18, loc='lower right', frameon=False)
+
+    plt.tight_layout()
     plt.show()
 
+def save_pdf_loss_curves_mplt(history, 
+                              smoothing_factor=0.8, 
+                              fill_a=0,
+                              with_best_point=False,
+                              plt_style="seaborn-v0_8-whitegrid",
+                              start_epoch=1,
+                              figsize = (10, 6)
+                              ):
+    """Save pdf plots of training curves of a results dictionary with smoothed curves and saves them as PDF.
+
+    Args:
+        history (dict): Dictionary containing training history, e.g.
+            {"loss": [...],
+             "val_loss": [...],
+             "accuracy": [...],
+             "val_accuracy": [...]}.
+        smoothing_factor (float): Smoothing factor for curves (default: 0.7).
+        start_epoch (int): Starting epoch number (default: 1).
+        fill_a (float): Alpha value for filling the area between curves (default: 0).
+        with_best_point (bool): Whether to include the best epoch point on the plot (default: False).
+        plt_style (str): Matplotlib style to use for the plot (default: "seaborn-v0_8-whitegrid").
+        figsize (tuple): Figure size (width, height) in inches (default: (10, 6)).
+    """
+    loss = history.history["loss"]
+    loss = smooth_curve(loss, smoothing_factor)
+    val_loss = history.history["val_loss"]
+    val_loss = smooth_curve(val_loss, smoothing_factor)
+
+    accuracy = history.history["accuracy"]
+    accuracy = smooth_curve(accuracy, smoothing_factor)
+    val_accuracy = history.history["val_accuracy"]
+    val_accuracy = smooth_curve(val_accuracy, smoothing_factor)
+
+    epochs = range(start_epoch, len(history.history["loss"])+1)
+
+    index_loss = np.argmin(val_loss)  # This is the epoch with the lowest validation loss
+    val_lowest = val_loss[index_loss]
+    index_acc = np.argmax(val_accuracy)
+    acc_highest = val_accuracy[index_acc]
+
+    sc_label = 'Best epoch = ' + str(index_loss + start_epoch)
+    vc_label = 'Best epoch = ' + str(index_acc + start_epoch)
+
+    plt.figure(figsize=figsize, facecolor='white')
+    plt.style.use(plt_style)
+
+    # Plot loss
+    plt.plot(epochs, loss, '#0570b9', label='Training loss', linewidth=4)
+    plt.plot(epochs, val_loss, "#ff8000", label='Validation loss', linewidth=4)
+    if fill_a:
+        plt.fill_between(epochs, val_loss, loss, color='gray', alpha=fill_a)
+    plt.title("Training and Validation Loss", fontsize=16)
+    plt.xlabel("Epochs", fontsize=12)
+    plt.ylabel("Loss", fontsize=12)
+    plt.xlim([0.5, len(epochs)]) 
+    # Plot best point
+    if with_best_point:
+        plt.scatter(index_loss + start_epoch, val_lowest, s=150, c='blue', label=sc_label)
+    plt.legend(fontsize=10, loc='upper right', frameon=False)
+
+    # Save loss plot separately
+    plt.savefig("loss_plot.pdf", bbox_inches='tight')
+    plt.clf()  # Clear the figure
+
+    # Plot accuracy
+    plt.plot(epochs, accuracy, '#0570b9',  label='Training Accuracy', linewidth=4)
+    plt.plot(epochs, val_accuracy,"#ff8000", label='Validation Accuracy', linewidth=4)
+    if fill_a:
+        plt.fill_between(epochs, val_accuracy, accuracy, color='gray', alpha=fill_a)
+    plt.title("Training and Validation Accuracy", fontsize=16)
+    plt.xlabel("Epochs", fontsize=12)
+    plt.ylabel("Accuracy", fontsize=12)
+    plt.xlim([0.5, len(epochs)]) 
+    plt.ylim([0, 1.1])
+    # Plot best point
+    if with_best_point:
+        plt.scatter(index_acc + start_epoch, acc_highest, s=150, c='blue', label=vc_label)
+    plt.legend(fontsize=10, loc='lower right', frameon=False)
+
+    # Save accuracy plot separately
+    plt.savefig("accuracy_plot.pdf", bbox_inches='tight')
+    plt.clf()  # Clear the figure
+
+    plt.close()
 
 # Plot loss curves of a model using plotly.py with smoothing effect
 def plot_loss_curves_plotly(history, smoothing_factor=0.8):
