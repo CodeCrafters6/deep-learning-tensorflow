@@ -114,11 +114,13 @@ from tf_helper_functions import (
     view_random_image,
     augment_random_image,
     plot_loss_curves_mplt,
+    save_pdf_loss_curves_mplt,
     plot_loss_curves_plotly,
     create_tensorboard_callback,
     create_feature_extractor_model,
     compare_histories_plotly,
     compare_histories_mplt,
-    get_callbacks
+    get_callbacks,
+    load_history
 )
 ```
