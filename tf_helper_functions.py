@@ -2,8 +2,8 @@
 import tensorflow as tf
 import tensorflow_hub as hub
 import numpy as np
-from tensorflow.keras.callbacks import EarlyStopping,  ModelCheckpoint, ReduceLROnPlateau
-
+import pickle
+from tensorflow.keras.callbacks import Callback, EarlyStopping,  ModelCheckpoint, ReduceLROnPlateau
 
 import os
 import random
@@ -752,7 +752,22 @@ def compare_histories_mplt(original_history, new_history, initial_epochs=5):
     plt.xlabel("epoch")
     plt.show()
 
-    
+
+
+class SaveHistoryCallback(Callback):
+    def __init__(self, filepath):
+        super(SaveHistoryCallback, self).__init__()
+        self.filepath = filepath
+
+    def on_train_begin(self, logs=None):
+        self.history = {}
+
+    def on_epoch_end(self, epoch, logs=None):
+        for key, value in logs.items():
+            self.history.setdefault(key, []).append(value)
+        with open(self.filepath, 'wb') as file:
+            pickle.dump(self.history, file)
+  
 def get_callbacks():
     # Stop training when a monitored metric has stopped improving.
     early_stop = EarlyStopping(monitor='val_loss', 
@@ -774,10 +789,24 @@ def get_callbacks():
     # Add other performance-enhancing callbacks if desired
     # For example:
     # tensorboard = TensorBoard(log_dir='logs')
+    save_history_callback = SaveHistoryCallback('history.pkl')
 
-    callbacks = [early_stop, checkpoint, reduce_lr]
+    callbacks = [early_stop, checkpoint, reduce_lr, save_history_callback]
 
     return callbacks
 
+# Load history object
+class H:
+    def __init__(self,history):
+        self.history=  history
+
+def load_history(filepath):
+    """
+    Example usage: 
+    loaded_history = load_history('history.pkl')
+    """
+    with open(filepath, 'rb') as file:
+        history = pickle.load(file)
+    return H(history)
 
     
