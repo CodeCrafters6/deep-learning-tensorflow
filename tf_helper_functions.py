@@ -768,16 +768,16 @@ class SaveHistoryCallback(Callback):
         with open(self.filepath, 'wb') as file:
             pickle.dump(self.history, file)
   
-def get_callbacks():
+def get_callbacks(EarlyStoppingPatience=5,LearningRatePatience=3):
     # Stop training when a monitored metric has stopped improving.
     early_stop = EarlyStopping(monitor='val_loss', 
-                               patience=5, #Number of epochs with no improvement after which training will be stopped.
+                               patience=EarlyStoppingPatience, #Number of epochs with no improvement after which training will be stopped.
                                restore_best_weights=True)
 
     # Reduce learning rate when a metric has stopped improving.
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', 
                                   factor=0.1,
-                                  patience=3, #Number of epochs with no improvement after which learning rate will be reduced.
+                                  patience=LearningRatePatience, #Number of epochs with no improvement after which learning rate will be reduced.
                                   verbose=1)
 
     checkpoint = ModelCheckpoint(filepath='model_weights.h5',
