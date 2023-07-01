@@ -550,25 +550,41 @@ def create_feature_extractor_model(model_url, IMAGE_SHAPE, num_classes):
     return model
 
 
-def augment_random_image(target_dir, data_augmentation):
+def augment_random_image(root_path, file_extension, data_augmentation):
     """
     Reads a random image from a randomly chosen class in the target directory,
     applies data augmentation to the image, and plots the original and augmented images side by side.
 
     Parameters:
-    target_dir (str): Path to the directory containing the target images.
+    root_path (str): Path to the root directory containing the target images.
+    file_extension (str): Extension of the image files.
     data_augmentation (tf.keras.Sequential): Data augmentation model to apply to the images.
 
     Returns:
     None
+
+    Usage:
+    import tensorflow as tf
+    from tensorflow.keras import layers
+
+    augmentation = tf.keras.Sequential([
+        layers.Rescaling(1./255),
+        layers.RandomZoom(0.2),
+    ])
+
+    # Define the target directory
+    root_path = "data"
+    file_extension = "jpg"
+    augment_random_image(root_path, file_extension, augmentation) 
+
     """
     # Get a random class from the target directory
-    target_class = random.choice(os.listdir(target_dir))
+    target_class = random.choice(list(Path(root_path).rglob('*/*')))
 
     # Get a random image from the chosen class
-    class_dir = os.path.join(target_dir, target_class)
-    random_image = random.choice(os.listdir(class_dir))
-    random_image_path = os.path.join(class_dir, random_image)
+    class_dir = target_class.parent
+    random_image = random.choice(list(class_dir.glob(f'*.{file_extension}')))
+    random_image_path = random_image
 
     # Read the random image
     img = mpimg.imread(random_image_path)
@@ -577,16 +593,16 @@ def augment_random_image(target_dir, data_augmentation):
     augmented_img = data_augmentation(tf.expand_dims(img, axis=0))
 
     # Plot the original and augmented images
-    plt.figure(figsize=(10, 5))
+    plt.figure(figsize=(14, 6))
 
     plt.subplot(1, 2, 1)
     plt.imshow(img)
-    plt.title(f"Original random image from class: {target_class}")
+    plt.title(f"Original random image from class: {target_class.parent.name}")
     plt.axis(False)
 
     plt.subplot(1, 2, 2)
-    plt.imshow(tf.squeeze(augmented_img) / 255.0)
-    plt.title(f"Augmented random image from class: {target_class}")
+    plt.imshow(tf.squeeze(augmented_img))
+    plt.title(f"Augmented random image from class: {target_class.parent.name}")
     plt.axis(False)
     plt.show()
 
