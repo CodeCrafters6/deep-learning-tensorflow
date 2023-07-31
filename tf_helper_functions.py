@@ -867,7 +867,7 @@ def get_predictions_and_labels(test_data, model):
 
 
 
-def plot_classification_report(y_true, y_pred, target_names, figsize=(8, 4), cmap=plt.cm.Blues, save_pdf=None):
+def plot_classification_report(y_true, y_pred, target_names, figsize=(8, 4), cmap=plt.cm.Blues, save_pdf=None, digits=3):
     """
     This function plots the classification report as a table-like plot.
 
@@ -878,6 +878,7 @@ def plot_classification_report(y_true, y_pred, target_names, figsize=(8, 4), cma
         figsize (tuple): Optional. Size of the plot (width, height).
         cmap (str): Optional. Color map for the heatmap.
         save_pdf (str or None): Optional. If provided, the plot will be saved as a PDF with the given filename.
+        digits (int): Optional. Number of decimal points for the values in the heatmap.
 
     Returns:
         None
@@ -886,11 +887,11 @@ def plot_classification_report(y_true, y_pred, target_names, figsize=(8, 4), cma
         plot_classification_report(y_true, y_pred, target_names=class_names)
 
     """
-    report = classification_report(y_true, y_pred, target_names=target_names, output_dict=True, digits=4)
+    report = classification_report(y_true, y_pred, target_names=target_names, output_dict=True, digits=digits)
     report_df = pd.DataFrame(report).transpose()
 
     plt.figure(figsize=figsize)
-    sns.heatmap(report_df, annot=True, cmap=cmap, fmt=".2f", linewidths=0.5)
+    sns.heatmap(report_df, annot=True, cmap=cmap, fmt=f".{digits}f", linewidths=0.5)
     plt.title("Classification Report")
     plt.xlabel("Metrics")
     plt.ylabel("Classes")
@@ -902,7 +903,8 @@ def plot_classification_report(y_true, y_pred, target_names, figsize=(8, 4), cma
     else:
         plt.show()
 
-def plot_confusion_matrix(y_true, y_pred, classes, normalize=False, title='Confusion Matrix', cmap=plt.cm.Blues, figsize=(8, 6), save_pdf=None):
+
+def plot_confusion_matrix(y_true, y_pred, classes, normalize=False, title='Confusion Matrix', cmap=plt.cm.Blues,  digits=2, figsize=(8, 6), save_pdf=None):
     """
     This function plots the confusion matrix.
 
@@ -915,6 +917,7 @@ def plot_confusion_matrix(y_true, y_pred, classes, normalize=False, title='Confu
         cmap: Color map for the plot.
         figsize (tuple): Optional. Size of the plot (width, height).
         save_pdf (str or None): Optional. If provided, the plot will be saved as a PDF with the given filename.
+        digits (int): Optional. Number of decimal points for the values in the heatmap.
 
     Returns:
         None
@@ -927,7 +930,7 @@ def plot_confusion_matrix(y_true, y_pred, classes, normalize=False, title='Confu
         cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
 
     plt.figure(figsize=figsize)
-    sns.heatmap(cm, annot=True, fmt='.2f', cmap=cmap, xticklabels=classes, yticklabels=classes)
+    sns.heatmap(cm, annot=True, fmt=f'.{digits}f', cmap=cmap, xticklabels=classes, yticklabels=classes)
     plt.xlabel('Predicted Label')
     plt.ylabel('True Label')
     if title:
@@ -1013,8 +1016,3 @@ def plot_multiclass_roc(y_true_one_hot, y_prob, class_names, lw=2, figsize=(10, 
         plt.close()
     else:
         plt.show()
-
-
-
-
-
