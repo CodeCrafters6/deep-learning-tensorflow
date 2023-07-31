@@ -121,6 +121,10 @@ from tf_helper_functions import (
     compare_histories_plotly,
     compare_histories_mplt,
     get_callbacks,
-    load_history
+    load_history,
+    get_predictions_and_labels,
+    plot_classification_report,
+    plot_confusion_matrix,
+    plot_multiclass_roc
 )
 ```
