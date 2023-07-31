@@ -1,23 +1,30 @@
 # helpers
-import tensorflow as tf
-import tensorflow_hub as hub
-import numpy as np
-import pickle
-from tensorflow.keras.callbacks import Callback, EarlyStopping,  ModelCheckpoint, ReduceLROnPlateau
-
 import os
 import random
 from pathlib import Path
 import shutil
 from shutil import copyfile
+import datetime
+import pytz
+import pickle
+
+import tensorflow as tf
+import tensorflow_hub as hub
+from tensorflow.keras.callbacks import Callback, EarlyStopping,  ModelCheckpoint, ReduceLROnPlateau
+
+import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import datetime
-import pytz
+
 from sklearn.model_selection import train_test_split
+import seaborn as sns
 from tqdm.notebook import tqdm
+from itertools import cycle
+from sklearn.metrics import confusion_matrix, classification_report,roc_curve, auc
+
 
 def delete_dir(dir_name):
     shutil.rmtree(f'/content/{dir_name}') #deletes a directory and all its contents.
@@ -825,4 +832,189 @@ def load_history(filepath):
         history = pickle.load(file)
     return H(history)
 
-    
+import numpy as np
+
+def get_predictions_and_labels(test_data, model):
+    """
+    Get model predictions and labels from test data.
+
+    Parameters:
+        test_data (data generator): The test data generator.
+        model (keras.Model): The model for predictions.
+
+    Returns:
+        y_prob (array): Predicted probabilities for each class.
+        y_pred (array): Predicted class indices.
+        y_true (array): True class indices.
+        y_true_one_hot (array): One-hot matrix of true labels.
+
+    Example: y_prob, y_pred, y_true, y_true_one_hot = get_predictions_and_labels(test_data, model = combined_model)
+    """
+    y_prob = model.predict(test_data)
+    y_pred = y_prob.argmax(axis=1)
+
+    y_true = []
+    y_true_one_hot = []
+
+    for _, labels in test_data:
+        y_true.extend(np.argmax(labels, axis=1))
+        y_true_one_hot.append(labels)
+
+    y_true = np.array(y_true)
+    y_true_one_hot = np.concatenate(y_true_one_hot)
+
+    return y_prob, y_pred, y_true, y_true_one_hot
+
+
+
+def plot_classification_report(y_true, y_pred, target_names, figsize=(8, 4), cmap=plt.cm.Blues, save_pdf=None):
+    """
+    This function plots the classification report as a table-like plot.
+
+    Parameters:
+        y_true (array-like): True labels.
+        y_pred (array-like): Predicted labels.
+        target_names (list): List of class labels.
+        figsize (tuple): Optional. Size of the plot (width, height).
+        cmap (str): Optional. Color map for the heatmap.
+        save_pdf (str or None): Optional. If provided, the plot will be saved as a PDF with the given filename.
+
+    Returns:
+        None
+
+    Example:
+        plot_classification_report(y_true, y_pred, target_names=class_names)
+
+    """
+    report = classification_report(y_true, y_pred, target_names=target_names, output_dict=True, digits=4)
+    report_df = pd.DataFrame(report).transpose()
+
+    plt.figure(figsize=figsize)
+    sns.heatmap(report_df, annot=True, cmap=cmap, fmt=".2f", linewidths=0.5)
+    plt.title("Classification Report")
+    plt.xlabel("Metrics")
+    plt.ylabel("Classes")
+    plt.tight_layout()
+
+    if save_pdf:
+        plt.savefig(save_pdf, format='pdf')
+        plt.close()
+    else:
+        plt.show()
+
+def plot_confusion_matrix(y_true, y_pred, classes, normalize=False, title='Confusion Matrix', cmap=plt.cm.Blues, figsize=(8, 6), save_pdf=None):
+    """
+    This function plots the confusion matrix.
+
+    Parameters:
+        y_true (array-like): True labels.
+        y_pred (array-like): Predicted labels.
+        classes (list): List of class labels.
+        normalize (bool): If True, the confusion matrix will be normalized.
+        title (str): Title for the plot.
+        cmap: Color map for the plot.
+        figsize (tuple): Optional. Size of the plot (width, height).
+        save_pdf (str or None): Optional. If provided, the plot will be saved as a PDF with the given filename.
+
+    Returns:
+        None
+
+    Example:
+        plot_confusion_matrix(y_true, y_pred, classes=class_names)
+    """
+    cm = confusion_matrix(y_true, y_pred)
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+
+    plt.figure(figsize=figsize)
+    sns.heatmap(cm, annot=True, fmt='.2f', cmap=cmap, xticklabels=classes, yticklabels=classes)
+    plt.xlabel('Predicted Label')
+    plt.ylabel('True Label')
+    if title:
+        plt.title(title)
+    plt.tight_layout()
+
+    if save_pdf:
+        plt.savefig(save_pdf, format='pdf')
+        plt.close()
+    else:
+        plt.show()
+
+
+def plot_multiclass_roc(y_true_one_hot, y_prob, class_names, lw=2, figsize=(10, 8), save_pdf=None):
+    """
+    Plot multiclass ROC curves along with micro and macro averages.
+
+    Parameters:
+        y_true_one_hot (array-like): One-hot matrix of true labels.
+        y_prob (array-like): Predicted probabilities for each class.
+        class_names (list): List of class labels.
+        lw (float): Line width for the ROC curves.
+        figsize (tuple): Optional. Size of the plot (width, height).
+        save_pdf (str or None): Optional. If provided, the plot will be saved as a PDF with the given filename.
+
+    Returns:
+        None
+
+    Example usage:
+        plot_multiclass_roc(y_true_one_hot, y_prob, class_names, figsize=(12, 10), save_pdf="multiclass_roc.pdf")
+    """
+    n_classes = len(class_names)
+
+    # Compute ROC curve and ROC area for each class
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+
+    for i in range(n_classes):
+        fpr[i], tpr[i], _ = roc_curve(y_true_one_hot[:, i], y_prob[:, i])
+        roc_auc[i] = auc(fpr[i], tpr[i])
+
+    # Compute micro-average ROC curve and ROC area
+    fpr["micro"], tpr["micro"], _ = roc_curve(y_true_one_hot.ravel(), y_prob.ravel())
+    roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
+
+    # Compute macro-average ROC curve and ROC area
+    all_fpr = np.unique(np.concatenate([fpr[i] for i in range(n_classes)]))
+    mean_tpr = np.zeros_like(all_fpr)
+    for i in range(n_classes):
+        mean_tpr += np.interp(all_fpr, fpr[i], tpr[i])
+    mean_tpr /= n_classes
+    fpr["macro"] = all_fpr
+    tpr["macro"] = mean_tpr
+    roc_auc["macro"] = auc(fpr["macro"], tpr["macro"])
+
+    # Plot all ROC curves
+    plt.figure(figsize=figsize)
+    styles = cycle(['-', '--', '-.', ':'])
+    for i, style in zip(range(n_classes), styles):
+        plt.plot(fpr[i], tpr[i], lw=lw, linestyle=style,
+                 label='ROC curve of class {0} (area = {1:0.2f})'
+                 ''.format(class_names[i], roc_auc[i]))
+
+    # Plot micro-average ROC curve
+    plt.plot(fpr["micro"], tpr["micro"], color='deeppink', lw=lw, linestyle=':',
+             label='micro-average ROC curve (area = {0:0.2f})'.format(roc_auc["micro"]))
+
+    # Plot macro-average ROC curve
+    plt.plot(fpr["macro"], tpr["macro"], color='navy', lw=lw, linestyle=':',
+             label='macro-average ROC curve (area = {0:0.2f})'.format(roc_auc["macro"]))
+
+    plt.plot([0, 1], [0, 1], 'k--', lw=lw)
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Extending the ROC Curve to Multi-Class')
+    plt.legend(loc="lower right")
+
+    if save_pdf:
+        plt.savefig(save_pdf, format='pdf')
+        plt.close()
+    else:
+        plt.show()
+
+
+
+
+
