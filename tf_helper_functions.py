@@ -832,8 +832,6 @@ def load_history(filepath):
         history = pickle.load(file)
     return H(history)
 
-import numpy as np
-
 def get_predictions_and_labels(test_data, model):
     """
     Get model predictions and labels from test data.
@@ -843,18 +841,19 @@ def get_predictions_and_labels(test_data, model):
         model (keras.Model): The model for predictions.
 
     Returns:
-        y_prob (array): Predicted probabilities for each class.
         y_pred (array): Predicted class indices.
         y_true (array): True class indices.
+        y_pred_one_hot (array): One-hot matrix of predicted labels.
         y_true_one_hot (array): One-hot matrix of true labels.
 
-    Example: y_prob, y_pred, y_true, y_true_one_hot = get_predictions_and_labels(test_data, model = combined_model)
+    Example: y_pred, y_true, y_pred_one_hot, y_true_one_hot = get_predictions_and_labels(test_data, model=combined_model)
     """
     y_prob = model.predict(test_data)
     y_pred = y_prob.argmax(axis=1)
 
     y_true = []
     y_true_one_hot = []
+    y_pred_one_hot = []
 
     for _, labels in test_data:
         y_true.extend(np.argmax(labels, axis=1))
@@ -863,7 +862,12 @@ def get_predictions_and_labels(test_data, model):
     y_true = np.array(y_true)
     y_true_one_hot = np.concatenate(y_true_one_hot)
 
-    return y_prob, y_pred, y_true, y_true_one_hot
+    for pred_class in y_pred:
+        y_pred_one_hot.append(np.eye(len(y_prob[0]))[pred_class])
+
+    y_pred_one_hot = np.array(y_pred_one_hot)
+
+    return y_pred, y_true, y_pred_one_hot, y_true_one_hot
 
 
 
@@ -944,13 +948,13 @@ def plot_confusion_matrix(y_true, y_pred, classes, normalize=False, title='Confu
         plt.show()
 
 
-def plot_multiclass_roc(y_true_one_hot, y_prob, class_names, lw=2, figsize=(10, 8), save_pdf=None):
+def plot_multiclass_roc(y_true_one_hot, y_pred_one_hot, class_names, lw=2, figsize=(10, 8), save_pdf=None):
     """
     Plot multiclass ROC curves along with micro and macro averages.
 
     Parameters:
         y_true_one_hot (array-like): One-hot matrix of true labels.
-        y_prob (array-like): Predicted probabilities for each class.
+        y_pred_one_hot (array-like): One-hot matrix of predit labels
         class_names (list): List of class labels.
         lw (float): Line width for the ROC curves.
         figsize (tuple): Optional. Size of the plot (width, height).
@@ -960,7 +964,7 @@ def plot_multiclass_roc(y_true_one_hot, y_prob, class_names, lw=2, figsize=(10, 
         None
 
     Example usage:
-        plot_multiclass_roc(y_true_one_hot, y_prob, class_names, figsize=(12, 10), save_pdf="multiclass_roc.pdf")
+        plot_multiclass_roc(y_true_one_hot, y_pred_one_hot, class_names, figsize=(12, 10), save_pdf="multiclass_roc.pdf")
     """
     n_classes = len(class_names)
 
@@ -970,11 +974,11 @@ def plot_multiclass_roc(y_true_one_hot, y_prob, class_names, lw=2, figsize=(10, 
     roc_auc = dict()
 
     for i in range(n_classes):
-        fpr[i], tpr[i], _ = roc_curve(y_true_one_hot[:, i], y_prob[:, i])
+        fpr[i], tpr[i], _ = roc_curve(y_true_one_hot[:, i], y_pred_one_hot[:, i])
         roc_auc[i] = auc(fpr[i], tpr[i])
 
     # Compute micro-average ROC curve and ROC area
-    fpr["micro"], tpr["micro"], _ = roc_curve(y_true_one_hot.ravel(), y_prob.ravel())
+    fpr["micro"], tpr["micro"], _ = roc_curve(y_true_one_hot.ravel(), y_pred_one_hot.ravel())
     roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
 
     # Compute macro-average ROC curve and ROC area
