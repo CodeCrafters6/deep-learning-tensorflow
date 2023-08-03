@@ -939,7 +939,7 @@ def plot_confusion_matrix(y_true, y_pred, classes, normalize=False, title='Confu
     else:
         plt.show()
 
-def plot_multiclass_roc_curve(y_true_one_hot, y_pred_prob, class_names, digits=10,
+def plot_multiclass_roc(y_true_one_hot, y_pred_prob, class_names, digits=10,
                               save_pdf=None, figsize=(10, 8)):
     """
     Plot a multiclass ROC curve for a classification model.
@@ -961,7 +961,7 @@ def plot_multiclass_roc_curve(y_true_one_hot, y_pred_prob, class_names, digits=1
         import matplotlib.pyplot as plt
 
         # Assuming you have already obtained `y_true_one_hot`, `y_pred_prob`, and `class_names`.
-        plot_multiclass_roc_curve(y_true_one_hot, y_pred_prob, class_names, digits=7,
+        plot_multiclass_roc(y_true_one_hot, y_pred_prob, class_names, digits=7,
                                   save_pdf='multiclass_roc_curve.pdf', figsize=(10, 8))
     """
 
