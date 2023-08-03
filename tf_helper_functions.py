@@ -841,19 +841,18 @@ def get_predictions_and_labels(test_data, model):
         model (keras.Model): The model for predictions.
 
     Returns:
-        y_pred (array): Predicted class indices.
         y_true (array): True class indices.
-        y_pred_one_hot (array): One-hot matrix of predicted labels.
+        y_pred (array): Predicted class indices.
         y_true_one_hot (array): One-hot matrix of true labels.
+        y_pred_prob (array): Predicted probabilities for each class.
 
-    Example: y_pred, y_true, y_pred_one_hot, y_true_one_hot = get_predictions_and_labels(test_data, model=combined_model)
+    Example: y_true, y_pred, y_true_one_hot, y_pred_prob = get_predictions_and_labels(test_data, model=combined_model)
     """
-    y_prob = model.predict(test_data)
-    y_pred = y_prob.argmax(axis=1)
+    y_pred_prob = model.predict(test_data)
+    y_pred = y_pred_prob.argmax(axis=1)
 
     y_true = []
     y_true_one_hot = []
-    y_pred_one_hot = []
 
     for _, labels in test_data:
         y_true.extend(np.argmax(labels, axis=1))
@@ -862,14 +861,7 @@ def get_predictions_and_labels(test_data, model):
     y_true = np.array(y_true)
     y_true_one_hot = np.concatenate(y_true_one_hot)
 
-    for pred_class in y_pred:
-        y_pred_one_hot.append(np.eye(len(y_prob[0]))[pred_class])
-
-    y_pred_one_hot = np.array(y_pred_one_hot)
-
-    return y_pred, y_true, y_pred_one_hot, y_true_one_hot
-
-
+    return y_true, y_pred, y_true_one_hot, y_pred_prob
 
 def plot_classification_report(y_true, y_pred, target_names, figsize=(8, 4), cmap=plt.cm.Blues, save_pdf=None, digits=3):
     """
@@ -947,76 +939,79 @@ def plot_confusion_matrix(y_true, y_pred, classes, normalize=False, title='Confu
     else:
         plt.show()
 
-
-def plot_multiclass_roc(y_true_one_hot, y_pred_one_hot, class_names, lw=2, figsize=(10, 8), save_pdf=None):
+def plot_multiclass_roc_curve(y_true_one_hot, y_pred_prob, class_names, digits=10,
+                              save_pdf=None, figsize=(10, 8)):
     """
-    Plot multiclass ROC curves along with micro and macro averages.
+    Plot a multiclass ROC curve for a classification model.
 
     Parameters:
-        y_true_one_hot (array-like): One-hot matrix of true labels.
-        y_pred_one_hot (array-like): One-hot matrix of predit labels
-        class_names (list): List of class labels.
-        lw (float): Line width for the ROC curves.
-        figsize (tuple): Optional. Size of the plot (width, height).
-        save_pdf (str or None): Optional. If provided, the plot will be saved as a PDF with the given filename.
+        y_true_one_hot (array): True one-hot encoded labels.
+        y_pred_prob (array): Predicted probabilities for each class.
+        class_names (list): List of class names (labels).
+        digits (int): Number of digits to display in AUC values (default is 10).
+        save_pdf (str): File path to save the plot as a PDF (default is None).
+        figsize (tuple): Figure size (width, height) in inches (default is (10, 8)).
 
     Returns:
         None
 
-    Example usage:
-        plot_multiclass_roc(y_true_one_hot, y_pred_one_hot, class_names, figsize=(12, 10), save_pdf="multiclass_roc.pdf")
+    Example:
+        import numpy as np
+        from sklearn.metrics import roc_curve, auc
+        import matplotlib.pyplot as plt
+
+        # Assuming you have already obtained `y_true_one_hot`, `y_pred_prob`, and `class_names`.
+        plot_multiclass_roc_curve(y_true_one_hot, y_pred_prob, class_names, digits=7,
+                                  save_pdf='multiclass_roc_curve.pdf', figsize=(10, 8))
     """
-    n_classes = len(class_names)
 
-    # Compute ROC curve and ROC area for each class
-    fpr = dict()
-    tpr = dict()
-    roc_auc = dict()
+    # Initialize dictionaries to store the fpr (false positive rate),
+    # tpr (true positive rate), and auc (area under the curve) for each class
+    fpr_dict = {}
+    tpr_dict = {}
+    auc_dict = {}
 
-    for i in range(n_classes):
-        fpr[i], tpr[i], _ = roc_curve(y_true_one_hot[:, i], y_pred_one_hot[:, i])
-        roc_auc[i] = auc(fpr[i], tpr[i])
+    # Number of classes
+    num_classes = len(class_names)
 
-    # Compute micro-average ROC curve and ROC area
-    fpr["micro"], tpr["micro"], _ = roc_curve(y_true_one_hot.ravel(), y_pred_one_hot.ravel())
-    roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
+    # Compute ROC curves and AUC for each class
+    for i in range(num_classes):
+        fpr_dict[i], tpr_dict[i], _ = roc_curve(y_true_one_hot[:, i], y_pred_prob[:, i])
+        auc_dict[i] = auc(fpr_dict[i], tpr_dict[i])
+        print(auc(fpr_dict[i], tpr_dict[i]))
 
-    # Compute macro-average ROC curve and ROC area
-    all_fpr = np.unique(np.concatenate([fpr[i] for i in range(n_classes)]))
+    # Compute micro-average ROC curve and AUC
+    fpr_micro, tpr_micro, _ = roc_curve(y_true_one_hot.ravel(), y_pred_prob.ravel())
+    auc_micro = auc(fpr_micro, tpr_micro)
+
+    # Compute macro-average AUC
+    all_fpr = np.unique(np.concatenate([fpr_dict[i] for i in range(num_classes)]))
     mean_tpr = np.zeros_like(all_fpr)
-    for i in range(n_classes):
-        mean_tpr += np.interp(all_fpr, fpr[i], tpr[i])
-    mean_tpr /= n_classes
-    fpr["macro"] = all_fpr
-    tpr["macro"] = mean_tpr
-    roc_auc["macro"] = auc(fpr["macro"], tpr["macro"])
+    for i in range(num_classes):
+        mean_tpr += np.interp(all_fpr, fpr_dict[i], tpr_dict[i])
+    mean_tpr /= num_classes
+    fpr_macro = all_fpr
+    tpr_macro = mean_tpr
+    auc_macro = auc(fpr_macro, tpr_macro)
 
-    # Plot all ROC curves
+    # Plot the multiclass ROC curve
     plt.figure(figsize=figsize)
-    styles = cycle(['-', '--', '-.', ':'])
-    for i, style in zip(range(n_classes), styles):
-        plt.plot(fpr[i], tpr[i], lw=lw, linestyle=style,
-                 label='ROC curve of class {0} (area = {1:0.2f})'
-                 ''.format(class_names[i], roc_auc[i]))
+    plt.plot([0, 1], [0, 1], 'k--')
 
-    # Plot micro-average ROC curve
-    plt.plot(fpr["micro"], tpr["micro"], color='deeppink', lw=lw, linestyle=':',
-             label='micro-average ROC curve (area = {0:0.2f})'.format(roc_auc["micro"]))
+    for i in range(num_classes):
+        plt.plot(fpr_dict[i], tpr_dict[i], label=f"{class_names[i]} (AUC = {auc_dict[i]:.{digits}f})")
 
-    # Plot macro-average ROC curve
-    plt.plot(fpr["macro"], tpr["macro"], color='navy', lw=lw, linestyle=':',
-             label='macro-average ROC curve (area = {0:0.2f})'.format(roc_auc["macro"]))
+    plt.plot(fpr_micro, tpr_micro, label=f"Micro-average (AUC = {auc_micro:.{digits}f})", linestyle=':', linewidth=4)
+    plt.plot(fpr_macro, tpr_macro, label=f"Macro-average (AUC = {auc_macro:.{digits}f})", linestyle=':', linewidth=4)
 
-    plt.plot([0, 1], [0, 1], 'k--', lw=lw)
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title('Extending the ROC Curve to Multi-Class')
-    plt.legend(loc="lower right")
-
-    if save_pdf:
-        plt.savefig(save_pdf, format='pdf')
+    plt.title('Multiclass ROC Curve')
+    plt.legend(loc='lower right')
+    
+    if save_pdf is not None:
+        plt.savefig(save_pdf, format='pdf', dpi=300, bbox_inches='tight')
         plt.close()
     else:
         plt.show()
+
