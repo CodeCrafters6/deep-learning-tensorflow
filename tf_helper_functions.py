@@ -795,7 +795,8 @@ def get_callbacks(EarlyStoppingPatience=20,LearningRatePatience=3):
     # Stop training when a monitored metric has stopped improving.
     early_stop = EarlyStopping(monitor='val_loss', 
                                patience=EarlyStoppingPatience, #Number of epochs with no improvement after which training will be stopped.
-                               restore_best_weights=True)
+                               restore_best_weights=True
+                              )
 
     # Reduce learning rate when a metric has stopped improving.
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', 
@@ -806,7 +807,7 @@ def get_callbacks(EarlyStoppingPatience=20,LearningRatePatience=3):
     checkpoint = ModelCheckpoint(filepath='model_weights.h5',
                                  monitor='val_loss',
                                  save_best_only=True,
-                                 save_weights_only=True,
+                                 # save_weights_only=True,
                                  mode='min',
                                  verbose=1)
     # Add other performance-enhancing callbacks if desired
